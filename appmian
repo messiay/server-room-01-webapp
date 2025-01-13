@@ -1,0 +1,175 @@
+import React, { useState, useMemo, useEffect } from 'react';
+import { Card } from '@/components/ui/card';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, AreaChart, Area, Brush, ReferenceLine } from 'recharts';
+import { Calculator, Building } from 'lucide-react';
+
+const ServerFeasibilityCalculator = () => {
+  const serverTypes = {
+    'high-traffic-web': {
+      label: 'High-Traffic Web Server',
+      powerPerNode: 12,
+      recommendedNodes: 8,
+      costMultiplier: 1.3,
+      description: 'For websites with 1M+ monthly visitors'
+    },
+    'mid-traffic-web': {
+      label: 'Medium-Traffic Web Server',
+      powerPerNode: 8,
+      recommendedNodes: 6,
+      costMultiplier: 1,
+      description: 'For websites with 100k-1M monthly visitors'
+    },
+    'low-traffic-web': {
+      label: 'Low-Traffic Web Server',
+      powerPerNode: 4,
+      recommendedNodes: 4,
+      costMultiplier: 0.8,
+      description: 'For websites with <100k monthly visitors'
+    },
+    'data-storage': {
+      label: 'Data Storage Server',
+      powerPerNode: 10,
+      recommendedNodes: 6,
+      costMultiplier: 1.2,
+      description: 'For large-scale data storage and backup'
+    }
+  };
+
+  const [serverType, setServerType] = useState('mid-traffic-web');
+  const [nodes, setNodes] = useState(serverTypes['mid-traffic-web'].recommendedNodes);
+  const [roiData, setRoiData] = useState([]);
+  const [breakEvenYear, setBreakEvenYear] = useState(null);
+  const [chartType, setChartType] = useState('line');
+
+  const powerRequirement = useMemo(() => {
+    return serverTypes[serverType].powerPerNode * nodes;
+  }, [serverType, nodes]);
+
+  const calculateMetrics = () => {
+    const costMultiplier = serverTypes[serverType].costMultiplier;
+    return {
+      initialInvestment: (powerRequirement / 50) * 28533000 * costMultiplier,
+      maintenanceCost: (powerRequirement / 50) * 1200000 * costMultiplier,
+      operationalSavings: (powerRequirement / 50) * 1875000,
+      carbonReduction: (powerRequirement / 50) * 5.7,
+      ethanolRequirement: (powerRequirement / 50) * 11400,
+      energySavings: powerRequirement * 24 * 365 * 0.2
+    };
+  };
+
+  const metrics = calculateMetrics();
+
+  useEffect(() => {
+    const generateROIData = () => {
+      const maxYears = 20;
+      const data = [];
+      let foundBreakEven = null;
+
+      for (let i = 0; i <= maxYears; i++) {
+        const netReturn = -metrics.initialInvestment + (metrics.operationalSavings - metrics.maintenanceCost) * i;
+        const yearData = {
+          year: i,
+          netReturn: netReturn,
+          carbonSaved: Math.round(metrics.carbonReduction * i * 10) / 10,
+          energySavings: Math.round(metrics.energySavings * i),
+          ethanolUsed: Math.round(metrics.ethanolRequirement * i)
+        };
+        data.push(yearData);
+
+        if (foundBreakEven === null && netReturn >= 0) {
+          foundBreakEven = i;
+        }
+      }
+
+      setRoiData(data);
+      setBreakEvenYear(foundBreakEven);
+    };
+
+    generateROIData();
+  }, [metrics]);
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0
+    }).format(value);
+  };
+
+  const renderChart = () => {
+    switch (chartType) {
+      case 'bar':
+        return (
+          <BarChart data={roiData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="year" />
+            <YAxis yAxisId="left" />
+            <YAxis yAxisId="right" orientation="right" />
+            <Tooltip />
+            <Legend />
+            <Brush dataKey="year" height={30} stroke="#8884d8" />
+            <Bar yAxisId="left" dataKey="netReturn" name="Net Return" fill="#8884d8" />
+            <Bar yAxisId="right" dataKey="carbonSaved" name="Carbon Saved" fill="#82ca9d" />
+          </BarChart>
+        );
+      case 'area':
+        return (
+          <AreaChart data={roiData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="year" />
+            <YAxis yAxisId="left" />
+            <YAxis yAxisId="right" orientation="right" />
+            <Tooltip />
+            <Legend />
+            <Brush dataKey="year" height={30} stroke="#8884d8" />
+            <Area yAxisId="left" dataKey="netReturn" name="Net Return" fill="#8884d8" stroke="#8884d8" />
+            <Area yAxisId="right" dataKey="carbonSaved" name="Carbon Saved" fill="#82ca9d" stroke="#82ca9d" />
+          </AreaChart>
+        );
+      default:
+        return (
+          <LineChart data={roiData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="year" />
+            <YAxis yAxisId="left" />
+            <YAxis yAxisId="right" orientation="right" />
+            <Tooltip />
+            <Legend />
+            <Brush dataKey="year" height={30} stroke="#8884d8" />
+            <Line yAxisId="left" type="monotone" dataKey="netReturn" name="Net Return" stroke="#8884d8" />
+            <Line yAxisId="right" type="monotone" dataKey="carbonSaved" name="Carbon Saved" stroke="#82ca9d" />
+          </LineChart>
+        );
+    }
+  };
+
+  return (
+    <div className="w-full max-w-6xl p-6 space-y-6">
+      <Card className="p-6">
+        <h2 className="text-2xl font-bold mb-6">Server Feasibility Calculator</h2>
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="space-y-4">
+            <label className="block text-sm font-medium mb-1">Server Type</label>
+            <select className="w-full p-2 border rounded" value={serverType} onChange={(e) => setServerType(e.target.value)}>
+              {Object.entries(serverTypes).map(([key, type]) => (
+                <option key={key} value={key}>{type.label}</option>
+              ))}
+            </select>
+            <label className="block text-sm font-medium mb-1">Chart Type</label>
+            <select className="w-full p-2 border rounded" value={chartType} onChange={(e) => setChartType(e.target.value)}>
+              <option value="line">Line Chart</option>
+              <option value="bar">Bar Chart</option>
+              <option value="area">Area Chart</option>
+            </select>
+          </div>
+        </div>
+      </Card>
+      <Card className="p-6">
+        <h3 className="font-bold mb-4">ROI Analysis</h3>
+        <div style={{ width: '100%', height: 400 }}>{renderChart()}</div>
+      </Card>
+    </div>
+  );
+};
+
+export default ServerFeasibilityCalculator;
